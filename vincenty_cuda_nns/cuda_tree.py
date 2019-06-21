@@ -1,7 +1,7 @@
 import numpy as np
 
-from query_functions import query, shuffle, unshuffle, map_idx
-from building_functions import recursive_build
+from .query_functions import query, shuffle, unshuffle, map_idx
+from .building_functions import recursive_build
 from functools import partial
 
 
@@ -49,7 +49,7 @@ class CudaTree:
 
     def query(self, n_neighbors=2, threadsperblock=64):
         """
-        Search neares neighbors for each point inside the tree
+        Search nearest neighbors for each point inside the tree
 
         :param threadsperblock: GPU threads per block, see
         numba.pydata.org/numba-doc/dev/cuda/kernels.html#kernel-invocation
