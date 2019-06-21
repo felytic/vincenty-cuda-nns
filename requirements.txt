@@ -1,0 +1,4 @@
+numba==0.41.0
+cuda-friendly-vincenty==0.1.1
+numpy==1.13.1
+
