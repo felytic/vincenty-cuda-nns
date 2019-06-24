@@ -7,7 +7,7 @@ Nearest neighbor search algorithm on Earth's surface that runs on a GPU and uses
 
 ## Installation
 ```
-pip install vincenty_cuda_nns
+pip install vincenty-cuda-nns
 ```
 
 ## Usage example
