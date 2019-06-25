@@ -1,6 +1,7 @@
 # Vincenty nearest neighbor search using CUDA
 Nearest neighbor search algorithm on Earth's surface that runs on a GPU and uses [Vincenty's formula](https://en.wikipedia.org/wiki/Vincenty%27s_formulae)
 
+## Application
 Nearest Neighbour Search is the **key component of location data analysis**:
 - Nearest Neighbour Index is based on measuring distances between points
 - Both **global** pattern analysis algorithms (Global Moran’s I, Getis-Ord General G), as well as **local** pattern analysis algorithms (Anselin Local Moran's I, Getis Ord GI *) with the **k-nn approach** to define neighbours are based on measuring distances between points
