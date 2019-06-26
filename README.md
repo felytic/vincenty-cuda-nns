@@ -8,6 +8,8 @@ Nearest Neighbour Search is the **key component of location data analysis**:
 
 Using Vincenty’s formula allows performing location analysis on **any location using geographic coordinates**.
 
+[Presentation slides](https://docs.google.com/presentation/d/1c0-9hQVlZoordzm1gZ9uKQJVqDyZQ9lZQe-SBEo-lwE/edit?usp=sharing)
+
 ## Requirements
 - CUDA-enabled GPU with compute capability 2.0 or above with an up-to-data Nvidia driver.
 - [CUDA toolkit](https://docs.nvidia.com/cuda/cuda-installation-guide-linux/index.html])
