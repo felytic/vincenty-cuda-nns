@@ -88,7 +88,7 @@ def map_idx(array, idx_array):
     return result
 
 
-@cuda.jit('float32[:], int32, float32[:,:], float32[:]', device=True)
+@cuda.jit('float32(float32[:], int32, float32[:,:], float32[:])', device=True)
 def distance_to_node(point, node, centroids, radiuses):
     distance = vincenty(point[0], point[1],
                         centroids[node][0], centroids[node][1])
@@ -96,8 +96,7 @@ def distance_to_node(point, node, centroids, radiuses):
     return max(0, distance - radiuses[node])
 
 
-@cuda.jit(
-    'void(float32[:,:], float32[:,:], float32[:], float32[:,:], int32[:,:])')
+@cuda.jit
 def query(points, centroids, radiuses, distances, indices):
     i = cuda.grid(1)
 
