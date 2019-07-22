@@ -93,10 +93,14 @@ def distance_to_node(point, node, centroids, radiuses):
     distance = vincenty(point[0], point[1],
                         centroids[node][0], centroids[node][1])
 
-    return max(0, distance - radiuses[node])
+    distance = distance - radiuses[node]
+
+    # 1e-4 meters is less than Vincenty's formula accuracy
+    return distance if distance > 1e-4 else 0
 
 
-@cuda.jit
+@cuda.jit(
+    'void(float32[:,:], float32[:,:], float32[:], float32[:,:], int32[:,:])')
 def query(points, centroids, radiuses, distances, indices):
     i = cuda.grid(1)
 
