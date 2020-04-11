@@ -22,6 +22,7 @@ pip install vincenty-cuda-nns
 ## Usage example
 ```python
 import geopandas as gpd
+import numpy as np
 from vincenty_cuda_nns import CudaTree
 
 df = gpd.read_file('points.geojson')
