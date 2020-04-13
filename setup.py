@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
 
 setuptools.setup(
     name='vincenty-cuda-nns',
-    version='0.1.5',
+    version='0.1.6',
     author='Serhii Hulko',
     author_email='felytic@gmail.com',
     description='Nearest neighbor search on Earth\'s surface with a GPU',
@@ -17,7 +17,8 @@ setuptools.setup(
     classifiers=[
         'Programming Language :: Python :: 3',
         'Development Status :: 3 - Alpha',
-        'License :: OSI Approved :: GNU Lesser General Public License v3 (LGPLv3)',
+        'License :: OSI Approved :: '
+        'GNU Lesser General Public License v3 (LGPLv3)',
         'Operating System :: OS Independent',
     ],
 )
