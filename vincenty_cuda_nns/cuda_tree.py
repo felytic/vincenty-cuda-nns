@@ -8,7 +8,19 @@ from functools import partial
 class CudaTree:
     def __init__(self, data, leaf_size=5):
         """
-        Build Ball Tree for points on Earth's ellipsoid
+        Build Ball Tree for points clusters on Earth's ellipsoid
+        with indexing like this:
+
+                      0
+                      |
+              1----------------2
+              |                |
+          3------4        5--------6
+          |      |        |        |
+        7---8  9---10  11---12  13---14
+
+        Each cluster (node) described as centroid [lng, lat] and
+        it's radius in meters.
 
         :param data: array of points like (longitude, latitude)
         :param leaf_size: approximate size of tree's smallest nodes
