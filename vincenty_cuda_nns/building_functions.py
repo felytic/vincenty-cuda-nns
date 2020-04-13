@@ -8,6 +8,13 @@ vincenty = numba.jit(vincenty)
 
 @numba.njit
 def node_id_to_range(node_id, n):
+    """
+    :param node_id: index of the node
+    :param n: number of points
+
+    :return: indexes of first and last points in the node
+    """
+
     level = math.floor(math.log(node_id + 1) / math.log(2))
     step = n / (2 ** level)
     pos = node_id - 2 ** level + 1
