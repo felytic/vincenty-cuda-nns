@@ -129,6 +129,41 @@ def process_node(i, node, points, distances, indices):
                     indices[i][k - 1] = temp
 
 
+@cuda.jit('int32(float32[:], float32[:,:], float32[:,:], float32[:])',
+          device=True)
+def get_home_node(point, points, centroids, radiuses):
+    i = cuda.grid(1)
+
+    n_nodes = centroids.shape[0]
+    n_points = points.shape[0]
+
+    # if this point belongs to the tree
+    if i < points.shape[0] and point[0] == points[i][0] and \
+            point[1] == points[i][1]:
+        return point_id_to_node(i, n_points, n_nodes)
+
+    home_node = 0
+    node = home_node
+
+    # while node has childrens
+    while node < n_nodes:
+        distance = distance_to_node(point, node, centroids, radiuses)
+
+        # if this point intersects with the node
+        if distance == 0:
+            home_node = node
+            node = node * 2 + 1  # left child
+
+        else:
+            node = next_right(node)
+
+            # walk around tree completed
+            if node == 0:
+                break
+
+    return home_node
+
+
 @cuda.jit('void(float32[:,:], float32[:,:], float32[:], float32[:,:],'
           'int32[:,:])')
 def query(points, centroids, radiuses, distances, indices):
@@ -139,9 +174,8 @@ def query(points, centroids, radiuses, distances, indices):
 
     point = points[i]
     n_nodes = centroids.shape[0]
-    n_points = points.shape[0]
 
-    home_node = point_id_to_node(i, n_points, n_nodes)
+    home_node = get_home_node(point, points, centroids, radiuses)
     node = home_node
 
     while node < n_nodes:
