@@ -59,7 +59,7 @@ class CudaTree:
         self.unshuffle = partial(unshuffle, idx_array=self.idx_array)
         self.map_idx = partial(map_idx, idx_array=self.idx_array)
 
-    def query(self, n_neighbors=2, threadsperblock=64):
+    def query(self, data=None, n_neighbors=2, threadsperblock=64):
         """
         Search nearest neighbors for each point inside the tree
 
@@ -78,7 +78,6 @@ class CudaTree:
         distances[:] = np.inf
         indices = np.zeros((n, n_neighbors), dtype=np.int32)
 
-        new_points = self.data
         new_points = self.shuffle(self.data)
 
         blockspergrid = int(np.ceil(n / 64))

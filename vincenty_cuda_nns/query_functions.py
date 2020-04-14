@@ -85,8 +85,8 @@ def map_idx(array, idx_array):
 
 @cuda.jit('float32(float32[:], int32, float32[:,:], float32[:])', device=True)
 def distance_to_node(point, node, centroids, radiuses):
-    distance = vincenty(point[0], point[1], centroids[node][0],
-                        centroids[node][1])
+    distance = vincenty(point[0], point[1],
+                        centroids[node][0], centroids[node][1])
 
     distance = distance - radiuses[node]
 
