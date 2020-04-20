@@ -54,16 +54,6 @@ def next_right(node):
 
 
 @numba.njit
-def shuffle(points, idx_array):
-    result = np.zeros(points.shape, dtype=np.float32)
-
-    for i in numba.prange(len(result)):
-        result[i] = points[idx_array[i]]
-
-    return result
-
-
-@numba.njit
 def unshuffle(points, idx_array):
     result = np.zeros(points.shape, dtype=np.float32)
 

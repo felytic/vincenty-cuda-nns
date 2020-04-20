@@ -52,3 +52,18 @@ def test_poles(size):
 def test_zeros(size):
     X = np.zeros((size, 2))
     process_array(X)
+
+
+@pytest.mark.parametrize('size', DATASET_SIZES)
+def test_changed_array(size):
+    X = (np.random.random((size, 2)) * 180) - 90
+    distances, indices = brute_force(X)
+
+    cuda_tree = CudaTree(X, leaf_size=5)
+
+    X[:, :] = 0
+
+    cuda_dist, cuda_ind = cuda_tree.query(n_neighbors=2)
+
+    assert np.allclose(cuda_dist[:, 1], distances, atol=1)
+    assert (cuda_ind[:, 1] == indices).all()
