@@ -2,25 +2,40 @@ import numpy as np
 from cuda_friendly_vincenty import vincenty
 
 
-def brute_force(points):
+def brute_force(points, neighbors=None, n_neighbors=2):
+    if neighbors is None:
+        neighbors = points
+
     n = len(points)
 
-    distances = np.zeros(n, dtype=np.float32)
+    distances = np.zeros((n, n_neighbors), dtype=np.float32)
     distances[:] = np.inf
 
-    indices = np.zeros(n, dtype=np.int32)
+    indices = np.zeros((n, n_neighbors), dtype=np.int32)
 
-    for x in range(n):
-        for y in range(x + 1, n):
-            distance = vincenty(points[x, 0], points[x, 1],
-                                points[y, 0], points[y, 1])
+    for i in range(n):
+        for j in range(len(neighbors)):
+            distance = vincenty(points[i, 0], points[i, 1],
+                                neighbors[j, 0], neighbors[j, 1])
 
-            if (distance < distances[x]):
-                distances[x] = distance
-                indices[x] = y
+            if distance < distances[i][0]:
+                distances[i][0] = distance
+                indices[i][0] = j
 
-            if (distance < distances[y]):
-                distances[y] = distance
-                indices[y] = x
+                # bubble sort neighbors
+                for k in range(1, n_neighbors):
+                    if distances[i][k - 1] < distances[i][k]:
 
+                        # swap distances
+                        temp = distances[i][k]
+                        distances[i][k] = distances[i][k - 1]
+                        distances[i][k - 1] = temp
+
+                        # swap indices
+                        temp = indices[i][k]
+                        indices[i][k] = indices[i][k - 1]
+                        indices[i][k - 1] = temp
+
+    distances = np.flip(distances, 1)
+    indices = np.flip(indices, 1)
     return distances, indices
