@@ -55,7 +55,7 @@ def next_right(node):
 
 @numba.njit
 def map_idx(array, idx_array):
-    result = np.zeros(array.shape, dtype=np.float32)
+    result = np.zeros(array.shape, dtype=idx_array.dtype)
 
     for i in numba.prange(len(result)):
         result[i] = idx_array[array[i]]
