@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
 
 setuptools.setup(
     name='vincenty-cuda-nns',
-    version='0.2.0',
+    version='0.2.1',
     author='Serhii Hulko',
     author_email='felytic@gmail.com',
     description='Nearest neighbor search on Earth\'s surface with a GPU',
@@ -13,6 +13,11 @@ setuptools.setup(
     long_description_content_type='text/markdown',
     url='https://github.com/eos-vision/vincenty-cuda-nns',
     packages=['vincenty_cuda_nns'],
+    install_requires=[
+        'numba==0.48.0',
+        'cuda-friendly-vincenty==0.1.2',
+        'numpy==1.18.2',
+    ],
     license='GPLv3',
     classifiers=[
         'Programming Language :: Python :: 3',
