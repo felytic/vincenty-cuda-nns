@@ -5,7 +5,7 @@ with open('README.md', 'r') as fh:
 
 setuptools.setup(
     name='vincenty-cuda-nns',
-    version='0.1.6',
+    version='0.2.0',
     author='Serhii Hulko',
     author_email='felytic@gmail.com',
     description='Nearest neighbor search on Earth\'s surface with a GPU',
