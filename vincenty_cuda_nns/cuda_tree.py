@@ -1,6 +1,6 @@
 import numpy as np
 
-from .query_functions import query, unshuffle, map_idx
+from .query_functions import query, map_idx
 from .building_functions import recursive_build
 from functools import partial
 
@@ -51,10 +51,9 @@ class CudaTree:
                         self.node_radius, self.idx_array, self.node_idx,
                         self.n_nodes, self.leaf_size)
 
-        self.unshuffle = partial(unshuffle, idx_array=self.idx_array)
         self.map_idx = partial(map_idx, idx_array=self.idx_array)
 
-    def query(self, data=None, n_neighbors=2, threadsperblock=64):
+    def query(self, data, n_neighbors=2, threadsperblock=64):
         """
         Search nearest neighbors for each point inside the tree
 
@@ -67,19 +66,26 @@ class CudaTree:
                  indices: each entry gives the list of indices of neighbors of
                           the corresponding point
         """
-        n = self.data.shape[0]
+        data = np.array(data, dtype=np.float32)
+        n = data.shape[0]
+
+        # validate data
+        if n == 0:
+            raise ValueError('data is an empty array')
+
         distances = np.zeros((n, n_neighbors), dtype=np.float32)
         distances[:] = np.inf
         indices = np.zeros((n, n_neighbors), dtype=np.int32)
 
         blockspergrid = int(np.ceil(n / 64))
-        query[blockspergrid, threadsperblock](self.data, self.node_centroids,
+        query[blockspergrid, threadsperblock](data, self.data,
+                                              self.node_centroids,
                                               self.node_radius, distances,
                                               indices)
 
-        distances = self.unshuffle(np.flip(distances, 1))
-
         indices = np.apply_along_axis(self.map_idx, 0, indices)
-        indices = self.unshuffle(np.flip(indices, 1)).astype(np.int32)
+
+        distances = np.flip(distances, 1)
+        indices = np.flip(indices, 1)
 
         return distances, indices
