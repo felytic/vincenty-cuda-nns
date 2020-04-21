@@ -21,18 +21,23 @@ pip install vincenty-cuda-nns
 
 ## Usage example
 ```python
-import geopandas as gpd
+import geopandas as gpd  # here just for example
 import numpy as np
 from vincenty_cuda_nns import CudaTree
 
 df = gpd.read_file('points.geojson')
 
 # data is array of points like [longitude, latitude]
-data = np.stack(df['geometry']).astype(np.float32)
+points = np.stack(df['geometry']).astype(np.float32)
 
 # build tree for the data
-cuda_tree = CudaTree(data, leaf_size=4)
+cuda_tree = CudaTree(points, leaf_size=4)
 
-# query over the tree for nearest neighbor (including itself)
-distances, indices = cuda_tree.query(n_neighbors=2)
+# query over the tree for tree nearest neighbors (+1 for itself)
+distances, indices = cuda_tree.query(points, n_neighbors=4)
+
+# you can also find distances from andother dataset
+from_points = (np.random.random((100, 2)) * 180) - 90
+
+distances, indices = cuda_tree.query(from_points)
 ```

@@ -2,7 +2,6 @@ import math
 import numba
 from cuda_friendly_vincenty import vincenty
 
-
 vincenty = numba.jit(vincenty)
 
 
@@ -16,8 +15,8 @@ def node_id_to_range(node_id, n):
     """
 
     level = math.floor(math.log(node_id + 1) / math.log(2))
-    step = n / (2 ** level)
-    pos = node_id - 2 ** level + 1
+    step = n / (2**level)
+    pos = node_id - 2**level + 1
     idx_start = math.floor(pos * step)
     idx_end = math.floor((pos + 1) * step)
 
@@ -33,7 +32,7 @@ def recursive_build(i_node, data, node_centroids, node_radius, idx_array,
     node_centroids[i_node] = [0, 0]
 
     for i in range(idx_start, idx_end):
-        node_centroids[i_node] += data[idx_array[i]]
+        node_centroids[i_node] += data[i]
 
     node_centroids[i_node] /= (idx_end - idx_start)
 
@@ -41,10 +40,8 @@ def recursive_build(i_node, data, node_centroids, node_radius, idx_array,
     radius = 0.0
 
     for i in range(idx_start, idx_end):
-        dist = vincenty(node_centroids[i_node][0],
-                        node_centroids[i_node][1],
-                        data[idx_array[i]][0],
-                        data[idx_array[i]][1])
+        dist = vincenty(node_centroids[i_node][0], node_centroids[i_node][1],
+                        data[i][0], data[i][1])
         if dist > radius:
             radius = dist
 
@@ -72,19 +69,41 @@ def recursive_build(i_node, data, node_centroids, node_radius, idx_array,
 
 
 @numba.njit
-def partition_indices(data, idx_array, idx_start, idx_end):
+def get_spread_dimention(data, idx_array, idx_start, idx_end):
+    """
+    Get dimention (x or y) of widest spread in dataset
 
+    :param data: array of points [x, y]
+
+    :param idx_array:
+    :param idx_start:
+    :param idx_end:
+
+    :return 0 or 1 (for x and y dimentions)
+    """
     min_x, min_y = 180, 90
     max_x, max_y = -180, -90
 
     for i in range(idx_start, idx_end):
-        max_x = max(max_x, data[idx_array[i], 0])
-        max_y = max(max_y, data[idx_array[i], 1])
+        max_x = max(max_x, data[i, 0])
+        max_y = max(max_y, data[i, 1])
 
-        min_x = min(min_x, data[idx_array[i], 0])
-        min_y = min(min_y, data[idx_array[i], 1])
+        min_x = min(min_x, data[i, 0])
+        min_y = min(min_y, data[i, 1])
 
-    dim = 0 if ((max_x - min_x) > (max_y - min_y)) else 1
+    return 0 if ((max_x - min_x) > (max_y - min_y)) else 1
+
+
+@numba.njit
+def swap_items(array, idx_a, idx_b):
+    temp = array[idx_a].copy()
+    array[idx_a] = array[idx_b]
+    array[idx_b] = temp
+
+
+@numba.njit
+def partition_indices(data, idx_array, idx_start, idx_end):
+    dim = get_spread_dimention(data, idx_array, idx_start, idx_end)
 
     mid = (idx_start + idx_end) // 2
     rr = idx_end - 1
@@ -92,20 +111,22 @@ def partition_indices(data, idx_array, idx_start, idx_end):
 
     while rr > ll:
 
-        pivot = data[idx_array[(ll + rr) // 2], dim]
+        pivot = data[(ll + rr) // 2, dim]
         left = ll
         right = rr
 
         while left < right:
-            while data[idx_array[left], dim] < pivot:
+            while data[left, dim] < pivot:
                 left += 1
 
-            while data[idx_array[right], dim] > pivot:
+            while data[right, dim] > pivot:
                 right -= 1
 
             if left <= right:
-                idx_array[left], idx_array[right] = \
-                    idx_array[right], idx_array[left]
+                swap_items(data, left, right)
+                idx_array[left], idx_array[right] = idx_array[right], \
+                    idx_array[left]
+
                 left += 1
                 right -= 1
 
