@@ -1,40 +1,5 @@
-import math
-
-import numpy as np
-import numba
 from numba import cuda
-from cuda_friendly_vincenty import vincenty
-
-wrap = cuda.jit('float32(float32, float32, float32, float32)', device=True)
-vincenty = wrap(vincenty)
-
-
-@cuda.jit('int32(int32)', device=True)
-def node_to_level(node):
-    return math.floor(math.log(np.float32(node + 1)) / math.log(np.float32(2)))
-
-
-@cuda.jit('int32(int32, int32)', device=True)
-def node_range_start(node, n):
-    level = node_to_level(node)
-    step = n / (2**level)
-    pos = node - 2**level + 1
-    return math.floor(pos * step)
-
-
-@cuda.jit('int32(int32, int32)', device=True)
-def node_range_end(node, n):
-    level = node_to_level(node)
-    step = n / (2**level)
-    pos = node - 2**level + 1
-    return math.floor((pos + 1) * step)
-
-
-@cuda.jit('int32(int32, int32, int32)', device=True)
-def point_id_to_node(point_id, n_points, n_nodes):
-    step = n_points / ((n_nodes + 1) // 2)
-    level = node_to_level(n_nodes - 1)
-    return 2**level + (math.ceil((point_id + 1) / step) - 2)
+from .utils import node_range_start, node_range_end, point_id_to_node, get_dist
 
 
 @cuda.jit('int32(int32)', device=True)
@@ -53,20 +18,10 @@ def next_right(node):
     return i + 1
 
 
-@numba.njit
-def map_idx(array, idx_array):
-    result = np.zeros(array.shape, dtype=idx_array.dtype)
-
-    for i in numba.prange(len(result)):
-        result[i] = idx_array[array[i]]
-
-    return result
-
-
 @cuda.jit('float32(float32[:], int32, float32[:,:], float32[:])', device=True)
 def distance_to_node(point, node, centroids, radiuses):
-    distance = vincenty(point[0], point[1],
-                        centroids[node][0], centroids[node][1])
+    distance = get_dist(point[0], point[1],
+                        centroids[node, 0], centroids[node, 1])
 
     distance = distance - radiuses[node]
 
@@ -74,9 +29,9 @@ def distance_to_node(point, node, centroids, radiuses):
     return distance if distance > 1e-4 else 0
 
 
-@cuda.jit('void(int32, float32[:], float32[:,:], float32[:,:], int32[:,:])',
-          device=True)
-def process_node(node, point, tree_points, distances, indices):
+@cuda.jit('void(int32, float32[:], float32[:,:], int32[:], float32[:,:],'
+          'int32[:,:])', device=True)
+def process_node(node, point, tree_points, idx_array, distances, indices):
     i = cuda.grid(1)
     n_points = tree_points.shape[0]
     n_neighbors = distances.shape[1]
@@ -84,15 +39,16 @@ def process_node(node, point, tree_points, distances, indices):
     start = node_range_start(node, n_points)
     end = node_range_end(node, n_points)
 
-    for j in range(start, end):
+    for jj in range(start, end):
+        j = idx_array[jj]
         tree_point = tree_points[j]
 
-        dist = vincenty(point[0], point[1], tree_point[0], tree_point[1])
+        dist = get_dist(point[0], point[1], tree_point[0], tree_point[1])
 
         if distances[i][0] > dist:
             # replace farthest neighbor with current point
             distances[i][0] = dist
-            indices[i][0] = j
+            indices[i][0] = jj
 
             # bubble sort neighbors
             for k in range(1, n_neighbors):
@@ -109,18 +65,18 @@ def process_node(node, point, tree_points, distances, indices):
                     indices[i][k - 1] = temp
 
 
-@cuda.jit('int32(float32[:], float32[:,:], float32[:,:], float32[:])',
-          device=True)
-def get_home_node(point, tree_points, centroids, radiuses):
+@cuda.jit('int32(float32[:], float32[:,:], int32[:], float32[:,:],'
+          'float32[:])', device=True)
+def get_home_node(point, tree_points, idx_array, centroids, radiuses):
     i = cuda.grid(1)
-
     n_nodes = centroids.shape[0]
     n_points = tree_points.shape[0]
 
-    # if this point belongs to the tree
-    if i < tree_points.shape[0] and point[0] == tree_points[i][0] and \
-            point[1] == tree_points[i][1]:
-        return point_id_to_node(i, n_points, n_nodes)
+    if i < tree_points.shape[0]:
+        ii = idx_array[i]
+        # if this point belongs to the tree
+        if point[0] == tree_points[ii][0] and point[1] == tree_points[ii][1]:
+            return point_id_to_node(i, n_points, n_nodes)
 
     home_node = 0
     node = home_node
@@ -144,9 +100,10 @@ def get_home_node(point, tree_points, centroids, radiuses):
     return home_node
 
 
-@cuda.jit('void(float32[:,:], float32[:,:], float32[:,:], float32[:],'
-          'float32[:,:],int32[:,:])')
-def query(points, tree_points, centroids, radiuses, distances, indices):
+@cuda.jit('void(float32[:,:], float32[:,:], int32[:], float32[:,:],'
+          'float32[:], float32[:,:], int32[:,:])')
+def query(points, tree_points, idx_array, centroids, radiuses, distances,
+          indices):
     i = cuda.grid(1)
 
     if i >= points.shape[0]:
@@ -155,10 +112,12 @@ def query(points, tree_points, centroids, radiuses, distances, indices):
     point = points[i]
     n_nodes = centroids.shape[0]
 
-    home_node = get_home_node(point, tree_points, centroids, radiuses)
+    home_node = get_home_node(point, tree_points, idx_array, centroids,
+                              radiuses)
     node = home_node
 
     while node < n_nodes:
+
         distance = distance_to_node(point, node, centroids, radiuses)
         left_child = node * 2 + 1
 
@@ -172,7 +131,8 @@ def query(points, tree_points, centroids, radiuses, distances, indices):
 
         # find distances to all points in the node
         else:
-            process_node(node, point, tree_points, distances, indices)
+            process_node(node, point, tree_points, idx_array, distances,
+                         indices)
             node = next_right(node)
 
         # we walked all nodes in the tree and came back

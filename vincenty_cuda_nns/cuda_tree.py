@@ -1,12 +1,13 @@
 import numpy as np
 
-from .query_functions import query, map_idx
-from .building_functions import recursive_build
+from .query_functions import query
+from .building_functions import sort_level, process_nodes
+from .utils import map_idx
 from functools import partial
 
 
 class CudaTree:
-    def __init__(self, data, leaf_size=5):
+    def __init__(self, data, leaf_size=5, n_block_treads=64):
         """
         Build Ball Tree for points clusters on Earth's ellipsoid
         with indexing like this:
@@ -38,18 +39,33 @@ class CudaTree:
         n = self.data.shape[0]
 
         self.n_levels = int(1 + np.log2(max(1, ((n - 1) // self.leaf_size))))
-        self.n_nodes = int(2 ** self.n_levels) - 1
+        self.n_nodes = int(2**self.n_levels) - 1
 
         # allocate arrays for storage
         self.idx_array = np.arange(n, dtype=np.int32)
-        self.node_radius = np.zeros(self.n_nodes, dtype=np.float32)
-        self.node_idx = np.zeros((self.n_nodes, 2), dtype=np.int32)
-        self.node_centroids = np.zeros((self.n_nodes, 2), dtype=np.float32)
+        self.radiuses = np.zeros(self.n_nodes, dtype=np.float32)
+        self.centroids = np.zeros((self.n_nodes, 2), dtype=np.float32)
 
-        # build the tree
-        recursive_build(0, self.data, self.node_centroids,
-                        self.node_radius, self.idx_array, self.node_idx,
-                        self.n_nodes, self.leaf_size)
+        array_1 = np.arange(n, dtype=np.int32)
+        array_2 = np.arange(n, dtype=np.int32)
+
+        n_blocks = int(np.ceil(n / n_block_treads))
+
+        for level in range(self.n_levels - 1):
+            if level % 2:
+                sort_level[n_blocks, n_block_treads](self.data, level,
+                                                     array_1, array_2)
+                self.idx_array = array_2
+            else:
+                sort_level[n_blocks, n_block_treads](self.data, level,
+                                                     array_2, array_1)
+                self.idx_array = array_1
+
+        n_blocks = int(np.ceil(self.n_nodes / n_block_treads))
+
+        process_nodes[n_blocks, n_block_treads](self.data, self.centroids,
+                                                self.radiuses, self.idx_array,
+                                                self.n_nodes, self.leaf_size)
 
         self.map_idx = partial(map_idx, idx_array=self.idx_array)
 
@@ -77,11 +93,10 @@ class CudaTree:
         distances[:] = np.inf
         indices = np.zeros((n, n_neighbors), dtype=np.int32)
 
-        blockspergrid = int(np.ceil(n / 64))
-        query[blockspergrid, threadsperblock](data, self.data,
-                                              self.node_centroids,
-                                              self.node_radius, distances,
-                                              indices)
+        blockspergrid = int(np.ceil(n / threadsperblock))
+        query[blockspergrid, threadsperblock](data, self.data, self.idx_array,
+                                              self.centroids, self.radiuses,
+                                              distances, indices)
 
         indices = np.apply_along_axis(self.map_idx, 0, indices)
 
