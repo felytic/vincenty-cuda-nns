@@ -16,7 +16,7 @@ setuptools.setup(
     install_requires=[
         'numba==0.48.0',
         'cuda-friendly-vincenty==0.1.2',
-        'numpy==1.18.2',
+        'numpy==1.22.0',
     ],
     license='GPLv3',
     classifiers=[
